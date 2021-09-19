@@ -46,17 +46,40 @@ function Snake(bodyParts) {
 
   this.draw = (context, width, height, offset) => {
     this.bodyParts.forEach((bodyPart, index) => {
-      let tempOffset = offset
 
-      if (index === 0) tempOffset /= 2
+      if (index === 0) {
+        context.fillStyle = 'blue'
 
-      context.fillStyle = 'blue'
-      context.fillRect(
-        (bodyPart.x * width) + tempOffset,
-        (bodyPart.y * height) + tempOffset,
-        width - tempOffset * 2,
-        height - tempOffset * 2
-      )
+        context.fillRect(
+          bodyPart.x * width + offset / 2,
+          bodyPart.y * height + offset / 2,
+          width - offset,
+          height - offset
+        )
+      }
+      
+      const previous = this.bodyParts[index - 1]
+      
+      if (previous) {
+        context.fillStyle = 'blue'
+
+        const numbers = {
+          longX: (previous.x > bodyPart.x ? previous : bodyPart).x,
+          longY: (previous.y > bodyPart.y ? previous : bodyPart).y,
+          shortX: (previous.x > bodyPart.x ? bodyPart : previous).x,
+          shortY: (previous.y > bodyPart.y ? bodyPart : previous).y
+        }
+
+        const squareX = numbers.shortX * width + offset
+        const squareY = numbers.shortY * height + offset
+
+        context.fillRect(
+          squareX,
+          squareY,
+          (numbers.longX * width + width - offset) - squareX,
+          (numbers.longY * height + height - offset) - squareY
+        )
+      }
     })
   }
 
@@ -66,7 +89,7 @@ function Snake(bodyParts) {
   //   this.bodyParts.pop()
   // }
 
-  this.move = (direction, win) => {
+  this.move = (direction, eatenFood) => {
     let oldSnakeHead = this.bodyParts[0]
 
     this.bodyParts.unshift({
@@ -74,7 +97,7 @@ function Snake(bodyParts) {
       y: oldSnakeHead.y + direction.y
     })
     
-    if (!win) this.bodyParts.pop()
+    if (!eatenFood) this.bodyParts.pop()
   }
 }
 
@@ -123,9 +146,9 @@ function Food(x, y) {
 
 const gameScreen = new Canvas(
   document.querySelector('#gameScreen'),
-  30,
-  30,
-  15,
+  40,
+  40,
+  20,
   15
 )
 
@@ -169,7 +192,7 @@ function manageInput(key) {
 
   let oldSnakeHead = snake.bodyParts[0]
   let fail = false
-  let win = false
+  let eatenFood = false
 
   snake.bodyParts.forEach(bodyPart => {
     if (
@@ -187,12 +210,12 @@ function manageInput(key) {
     if (
       oldSnakeHead.x + direction.x === food.x &&
       oldSnakeHead.y + direction.y === food.y
-    ) win = true
+    ) eatenFood = true
   })
 
-  if (!fail) snake.move(direction, win)
+  if (!fail) snake.move(direction, eatenFood)
 
-  if (win && !fail) food.generateFood(gameScreen.checkerboardColumns, gameScreen.checkerboardRows)
+  if (eatenFood && !fail) food.generateFood(gameScreen.checkerboardColumns, gameScreen.checkerboardRows)
 
   gameScreen.drawBackground()
   snake.draw(
