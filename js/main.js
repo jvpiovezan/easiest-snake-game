@@ -46,10 +46,9 @@ function Snake(bodyParts) {
 
   this.draw = (context, width, height, offset) => {
     this.bodyParts.forEach((bodyPart, index) => {
+      context.fillStyle = '#2e7eff'
 
       if (index === 0) {
-        context.fillStyle = 'blue'
-
         context.fillRect(
           bodyPart.x * width + offset / 2,
           bodyPart.y * height + offset / 2,
@@ -61,8 +60,6 @@ function Snake(bodyParts) {
       const previous = this.bodyParts[index - 1]
       
       if (previous) {
-        context.fillStyle = 'blue'
-
         const numbers = {
           longX: (previous.x > bodyPart.x ? previous : bodyPart).x,
           longY: (previous.y > bodyPart.y ? previous : bodyPart).y,
@@ -82,12 +79,6 @@ function Snake(bodyParts) {
       }
     })
   }
-
-  // this.moveUp = () => {
-  //   let oldSnakeHead = this.bodyParts[0]
-  //   this.bodyParts.unshift({ x: oldSnakeHead.x, y: oldSnakeHead.y - 1 })
-  //   this.bodyParts.pop()
-  // }
 
   this.move = (direction, eatenFood) => {
     let oldSnakeHead = this.bodyParts[0]
@@ -129,7 +120,7 @@ function Food(x, y) {
   this.y = y
 
   this.draw = (context, width, height, offset) => {
-    context.fillStyle = 'red'
+    context.fillStyle = '#ff2e89'
     context.fillRect(
       (width * this.x) + offset,
       (height * this.y) + offset,
@@ -138,101 +129,108 @@ function Food(x, y) {
     )
   }
 
-  this.generateFood = (columns, rows) => {
-    this.x = Math.floor(Math.random() * columns)
-    this.y = Math.floor(Math.random() * rows)
+  this.generateFood = (columns, rows, bodyParts) => {
+    const newX = Math.floor(Math.random() * columns)
+    const newY = Math.floor(Math.random() * rows)
+
+    const isOnSnake = bodyParts.some(object => JSON.stringify({ x: newX, y: newY }) === JSON.stringify(object))
+
+    if (isOnSnake) return this.generateFood(columns, rows, bodyParts)
+    this.x = newX
+    this.y = newY
   }
 }
 
-const gameScreen = new Canvas(
-  document.querySelector('#gameScreen'),
-  40,
-  40,
-  20,
-  15
-)
+function Game(canvas, snake, food) {
+  this.canvas = canvas
+  this.snake = snake
+  this.food = food
 
-gameScreen.initialize()
-gameScreen.drawBackground()
+  this.draw = () => {
+    this.canvas.drawBackground()
+    this.snake.draw(
+      this.canvas.context,
+      this.canvas.squareWidth,
+      this.canvas.squareHeight,
+      10
+    )
+    this.food.draw(
+      this.canvas.context,
+      this.canvas.squareWidth,
+      this.canvas.squareHeight,
+      6
+    )
+  }
 
-const snake = new Snake([
-  { x: 3, y: 5 },
-  { x: 3, y: 6 },
-  { x: 4, y: 6 },
-  { x: 4, y: 7 },
-  { x: 4, y: 8 },
-  { x: 4, y: 9 }
-])
+  this.step = (key) => {
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return
 
-snake.draw(
-  gameScreen.context,
-  gameScreen.squareWidth,
-  gameScreen.squareHeight,
-  5
-)
+    const direction = { x: 0, y: 0 }
 
-const food = new Food(2, 4)
+    if (key === 'ArrowUp') direction.y = -1
+    if (key === 'ArrowDown') direction.y = 1
+    if (key === 'ArrowLeft') direction.x = -1
+    if (key === 'ArrowRight') direction.x = 1
 
-food.draw(
-  gameScreen.context,
-  gameScreen.squareWidth,
-  gameScreen.squareHeight,
-  3
-)
+    let oldSnakeHead = this.snake.bodyParts[0]
+    let unableToMove = false
+    let eatenFood = false
 
-function manageInput(key) {
-  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return
+    this.snake.bodyParts.forEach(bodyPart => {
+      if (
+        oldSnakeHead.x + direction.x === bodyPart.x &&
+        oldSnakeHead.y + direction.y === bodyPart.y
+      ) unableToMove = true
 
-  const direction = { x: 0, y: 0 }
+      if (
+        oldSnakeHead.x + direction.x === -1 ||
+        oldSnakeHead.x + direction.x === this.canvas.checkerboardColumns ||
+        oldSnakeHead.y + direction.y === -1 ||
+        oldSnakeHead.y + direction.y === this.canvas.checkerboardRows
+      ) unableToMove = true
 
-  if (key === 'ArrowUp') direction.y = -1
-  if (key === 'ArrowDown') direction.y = 1
-  if (key === 'ArrowLeft') direction.x = -1
-  if (key === 'ArrowRight') direction.x = 1
+      if (
+        oldSnakeHead.x + direction.x === this.food.x &&
+        oldSnakeHead.y + direction.y === this.food.y
+      ) eatenFood = true
+    })
 
-  let oldSnakeHead = snake.bodyParts[0]
-  let fail = false
-  let eatenFood = false
+    if (!unableToMove) this.snake.move(direction, eatenFood)
 
-  snake.bodyParts.forEach(bodyPart => {
-    if (
-      oldSnakeHead.x + direction.x === bodyPart.x &&
-      oldSnakeHead.y + direction.y === bodyPart.y
-    ) fail = true
+    if (eatenFood && !unableToMove) this.food.generateFood(this.canvas.checkerboardColumns, this.canvas.checkerboardRows, this.snake.bodyParts)
 
-    if (
-      oldSnakeHead.x + direction.x === -1 ||
-      oldSnakeHead.x + direction.x === gameScreen.checkerboardColumns ||
-      oldSnakeHead.y + direction.y === -1 ||
-      oldSnakeHead.y + direction.y === gameScreen.checkerboardRows
-    ) fail = true
+    this.draw()
+  }
 
-    if (
-      oldSnakeHead.x + direction.x === food.x &&
-      oldSnakeHead.y + direction.y === food.y
-    ) eatenFood = true
-  })
-
-  if (!fail) snake.move(direction, eatenFood)
-
-  if (eatenFood && !fail) food.generateFood(gameScreen.checkerboardColumns, gameScreen.checkerboardRows)
-
-  gameScreen.drawBackground()
-  snake.draw(
-    gameScreen.context,
-    gameScreen.squareWidth,
-    gameScreen.squareHeight,
-    5
-  )
-  food.draw(
-    gameScreen.context,
-    gameScreen.squareWidth,
-    gameScreen.squareHeight,
-    3
-  )
+  this.inputHandler = new InputHandler(this.step)
 }
 
-new InputHandler(manageInput)
+function startGame() {
+  const gameScreen = new Canvas(
+    document.querySelector('#gameScreen'),
+    40,
+    40,
+    15,
+    15
+  )
+  gameScreen.initialize()
+  
+  const snake = new Snake([
+    { x: 3, y: 5 },
+    { x: 3, y: 6 },
+    { x: 4, y: 6 },
+    { x: 4, y: 7 },
+    { x: 4, y: 8 },
+    { x: 4, y: 9 }
+  ])
+  
+  const food = new Food(2, 4)
+
+  const game = new Game(gameScreen, snake, food)
+  game.draw()
+}
+
+startGame()
 
 //TODO: refactor code and layout, add score, remove food spawns on snake bug, add death message and host website
 
