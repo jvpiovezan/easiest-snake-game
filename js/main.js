@@ -141,10 +141,23 @@ function Food(x, y) {
   }
 }
 
-function Game(canvas, snake, food) {
+function Scoreboard(score) {
+  this.score = score
+
+  this.draw = (context) => {
+    context.font = '50px monospace'
+    context.fillStyle = 'white'
+    context.fillText(`score: ${this.score}`, 8, 48)
+    context.fillStyle = '#ff2e89'
+    context.fillText(`score: ${this.score}`, 8, 45)
+  }
+}
+
+function Game(canvas, snake, food, scoreboard) {
   this.canvas = canvas
   this.snake = snake
   this.food = food
+  this.scoreboard = scoreboard
 
   this.draw = () => {
     this.canvas.drawBackground()
@@ -159,6 +172,9 @@ function Game(canvas, snake, food) {
       this.canvas.squareWidth,
       this.canvas.squareHeight,
       6
+    )
+    this.scoreboard.draw(
+      this.canvas.context
     )
   }
 
@@ -197,7 +213,14 @@ function Game(canvas, snake, food) {
 
     if (!unableToMove) this.snake.move(direction, eatenFood)
 
-    if (eatenFood && !unableToMove) this.food.generateFood(this.canvas.checkerboardColumns, this.canvas.checkerboardRows, this.snake.bodyParts)
+    if (eatenFood && !unableToMove) {
+      this.food.generateFood(
+        this.canvas.checkerboardColumns,
+        this.canvas.checkerboardRows,
+        this.snake.bodyParts
+      )
+      this.scoreboard.score += 1
+    }
 
     this.draw()
   }
@@ -215,18 +238,22 @@ function startGame() {
   )
   gameScreen.initialize()
   
-  const snake = new Snake([
+  const snakeInitialState = [
     { x: 3, y: 5 },
     { x: 3, y: 6 },
     { x: 4, y: 6 },
     { x: 4, y: 7 },
     { x: 4, y: 8 },
     { x: 4, y: 9 }
-  ])
+  ]
+
+  const snake = new Snake(snakeInitialState)
+
+  const scoreboard = new Scoreboard(snakeInitialState.length)
   
   const food = new Food(2, 4)
 
-  const game = new Game(gameScreen, snake, food)
+  const game = new Game(gameScreen, snake, food, scoreboard)
   game.draw()
 }
 
