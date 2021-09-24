@@ -1,28 +1,77 @@
-function Canvas(element, squareWidth, squareHeight, checkerboardColumns, checkerboardRows) {
+function Canvas(element, checkerboardColumns, checkerboardRows) {
   this.element = element
   this.context = this.element.getContext('2d')
 
-  this.squareWidth = squareWidth
-  this.squareHeight = squareHeight
-
   this.checkerboardColumns = checkerboardColumns
   this.checkerboardRows = checkerboardRows
+
+  this.squareWidth = 0
+  this.squareHeight = 0
 
   this.initialized = false
 
   this.initialize = () => {
     if (this.initialized) return
 
-    this.element.width = this.squareWidth * this.checkerboardColumns
-    this.element.height = this.squareHeight * this.checkerboardRows
+    this.resize()
     this.initialized = true
   }
 
+  this.viewport = {
+    x: 0,
+    y: 0,
+    size: 0
+  }
+
+  this.resize = () => {
+    this.element.width = document.body.clientWidth
+    this.element.height = document.body.clientHeight
+
+    if (this.element.width <= this.element.height) {
+      this.viewport.size = this.element.width
+      this.viewport.x = 0
+      this.viewport.y = this.element.height / 2 - this.viewport.size / 2
+    } else {
+      this.viewport.size = this.element.height
+      this.viewport.x = this.element.width / 2 - this.viewport.size / 2
+      this.viewport.y = 0
+    }
+
+    this.squareWidth = this.viewport.size / this.checkerboardColumns
+    this.squareHeight = this.viewport.size / this.checkerboardRows
+  }
+
+  this.context.fillRectByViewport = (x, y, width, height) => {
+    // console.log(this.viewport.x)
+    this.context.fillRect(
+      this.viewport.x + x,
+      this.viewport.y + y,
+      width,
+      height
+    )
+  }
+
+  this.context.fillTextByViewport = (text, x, y) => {
+    this.context.fillText(
+      text,
+      this.viewport.x + x,
+      this.viewport.y + y
+    )
+  }
+
   this.drawBackground = () => {
+    this.context.fillStyle = '#333'
+    this.context.fillRect(
+      0,
+      0,
+      this.element.width,
+      this.element.height
+    )
+
     for (let i = 0; i < this.checkerboardRows; i++) {
       for (let j = 0; j < this.checkerboardColumns / 2; j++) {
         this.context.fillStyle = '#89c955'
-        this.context.fillRect(
+        this.context.fillRectByViewport(
           j * this.squareWidth * 2 + (i % 2 === 1 ? this.squareWidth : 0),
           i * this.squareHeight,
           this.squareWidth,
@@ -30,7 +79,7 @@ function Canvas(element, squareWidth, squareHeight, checkerboardColumns, checker
         )
 
         this.context.fillStyle = '#9bfc4c'
-        this.context.fillRect(
+        this.context.fillRectByViewport(
           j * this.squareWidth * 2 + (i % 2 === 0 ? this.squareWidth : 0),
           i * this.squareHeight,
           this.squareWidth,
@@ -49,7 +98,7 @@ function Snake(bodyParts) {
       context.fillStyle = '#2e7eff'
 
       if (index === 0) {
-        context.fillRect(
+        context.fillRectByViewport(
           bodyPart.x * width + offset / 2,
           bodyPart.y * height + offset / 2,
           width - offset,
@@ -70,7 +119,7 @@ function Snake(bodyParts) {
         const squareX = numbers.shortX * width + offset
         const squareY = numbers.shortY * height + offset
 
-        context.fillRect(
+        context.fillRectByViewport(
           squareX,
           squareY,
           (numbers.longX * width + width - offset) - squareX,
@@ -121,7 +170,7 @@ function Food(x, y) {
 
   this.draw = (context, width, height, offset) => {
     context.fillStyle = '#ff2e89'
-    context.fillRect(
+    context.fillRectByViewport(
       (width * this.x) + offset,
       (height * this.y) + offset,
       width - offset * 2,
@@ -147,9 +196,9 @@ function Scoreboard(score) {
   this.draw = (context) => {
     context.font = '50px monospace'
     context.fillStyle = 'white'
-    context.fillText(`score: ${this.score}`, 8, 48)
+    context.fillTextByViewport(`score: ${this.score}`, 8, 48)
     context.fillStyle = '#ff2e89'
-    context.fillText(`score: ${this.score}`, 8, 45)
+    context.fillTextByViewport(`score: ${this.score}`, 8, 45)
   }
 }
 
@@ -231,10 +280,8 @@ function Game(canvas, snake, food, scoreboard) {
 function startGame() {
   const gameScreen = new Canvas(
     document.querySelector('#gameScreen'),
-    40,
-    40,
-    15,
-    15
+    16,
+    16
   )
   gameScreen.initialize()
   
@@ -255,10 +302,16 @@ function startGame() {
 
   const game = new Game(gameScreen, snake, food, scoreboard)
   game.draw()
+
+  window.addEventListener('resize', () => {
+    gameScreen.resize()
+    game.draw()
+  })
 }
 
 startGame()
 
 //TODO: refactor code and layout, add score, remove food spawns on snake bug, add death message and host website
+// add bombs and shadow
 
 //OPTIONAL: make responsive and mobile porting
