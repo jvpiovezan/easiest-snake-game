@@ -17,6 +17,64 @@ function Canvas(element, checkerboardColumns, checkerboardRows) {
     this.initialized = true
   }
 
+  this.startListener = (step) => {
+    const touch = {
+      start: {
+        x: 0,
+        y: 0
+      },
+      end: {
+        x: 0,
+        y: 0
+      }
+    }
+
+    this.element.addEventListener('touchstart', (event) => {
+      touch.start.x = event.changedTouches[0].screenX
+      touch.start.y = event.changedTouches[0].screenY
+    })
+
+    this.element.addEventListener('touchend', (event) => {
+      touch.end.x = event.changedTouches[0].screenX
+      touch.end.y = event.changedTouches[0].screenY
+
+      const key = manageGesture()
+      step(key)
+    })
+
+    function manageGesture() {
+      if (touch.start.x !== touch.end.x && touch.start.y !== touch.end.y) {
+        const numbers = {
+          nearest: {
+            x: Math.min(touch.start.x, touch.end.x),
+            y: Math.min(touch.start.y, touch.end.y)
+          },
+          farest: {
+            x: Math.max(touch.start.x, touch.end.x),
+            y: Math.max(touch.start.y, touch.end.y)
+          }
+        }
+  
+        const diffX = numbers.farest.x - numbers.nearest.x
+        const diffY = numbers.farest.y - numbers.nearest.y
+  
+        if (diffX >= diffY) {
+          if (touch.start.x > touch.end.x) {
+            return 'ArrowLeft'
+          } else {
+            return 'ArrowRight'
+          }
+        } else {
+          if (touch.start.y > touch.end.y) {
+            return 'ArrowUp'
+          } else {
+            return 'ArrowDown'
+          }
+        }
+      }
+    }
+  }
+
   this.viewport = {
     x: 0,
     y: 0,
@@ -25,7 +83,9 @@ function Canvas(element, checkerboardColumns, checkerboardRows) {
 
   this.resize = () => {
     this.element.width = document.body.clientWidth
+    this.element.style.width = document.body.clientWidth
     this.element.height = document.body.clientHeight
+    this.element.style.height = document.body.clientHeight
 
     if (this.element.width <= this.element.height) {
       this.viewport.size = this.element.width
@@ -110,20 +170,24 @@ function Snake(bodyParts) {
       
       if (previous) {
         const numbers = {
-          longX: (previous.x > bodyPart.x ? previous : bodyPart).x,
-          longY: (previous.y > bodyPart.y ? previous : bodyPart).y,
-          shortX: (previous.x > bodyPart.x ? bodyPart : previous).x,
-          shortY: (previous.y > bodyPart.y ? bodyPart : previous).y
+          farest: {
+            x: Math.max(previous.x, bodyPart.x),
+            y: Math.max(previous.y, bodyPart.y),
+          },
+          nearest: {
+            x: Math.min(previous.x, bodyPart.x),
+            y: Math.min(previous.y, bodyPart.y)
+          }
         }
 
-        const squareX = numbers.shortX * width + offset
-        const squareY = numbers.shortY * height + offset
+        const squareX = numbers.nearest.x * width + offset
+        const squareY = numbers.nearest.y * height + offset
 
         context.fillRectByViewport(
           squareX,
           squareY,
-          (numbers.longX * width + width - offset) - squareX,
-          (numbers.longY * height + height - offset) - squareY
+          (numbers.farest.x * width + width - offset) - squareX,
+          (numbers.farest.y * height + height - offset) - squareY
         )
       }
     })
@@ -275,13 +339,14 @@ function Game(canvas, snake, food, scoreboard) {
   }
 
   this.inputHandler = new InputHandler(this.step)
+  this.canvas.startListener(this.step)
 }
 
 function startGame() {
   const gameScreen = new Canvas(
     document.querySelector('#gameScreen'),
-    16,
-    16
+    10,
+    10
   )
   gameScreen.initialize()
   
