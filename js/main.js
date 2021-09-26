@@ -152,6 +152,7 @@ function Canvas(element, checkerboardColumns, checkerboardRows) {
 
 function Snake(bodyParts) {
   this.bodyParts = bodyParts
+  this.disabled = false
 
   this.draw = (context, width, height, offset) => {
     this.bodyParts.forEach((bodyPart, index) => {
@@ -256,13 +257,31 @@ function Food(x, y) {
 
 function Scoreboard(score) {
   this.score = score
+  this.win = false
 
-  this.draw = (context) => {
-    context.font = '50px monospace'
-    context.fillStyle = 'white'
-    context.fillTextByViewport(`score: ${this.score}`, 8, 48)
-    context.fillStyle = '#ff2e89'
-    context.fillTextByViewport(`score: ${this.score}`, 8, 45)
+  this.draw = (context, size) => {
+    const fontSize = 50
+    context.textAlign = 'center'
+    context.font = `${fontSize}px monospace`
+    if (!this.win) {
+      context.fillStyle = 'white'
+      context.fillTextByViewport(`score: ${this.score}`, size / 2, 48)
+      context.fillStyle = '#ff2e89'
+      context.fillTextByViewport(`score: ${this.score}`, size / 2, 45)
+    } else {
+      context.fillStyle = 'white'
+      context.fillTextByViewport(
+        'you won!',
+        size / 2,
+        size / 2
+      )
+      context.fillStyle = '#ff2e89'
+      context.fillTextByViewport(
+        'you won!',
+        size / 2,
+        size / 2 - 3
+      )
+    }
   }
 }
 
@@ -287,7 +306,8 @@ function Game(canvas, snake, food, scoreboard) {
       6
     )
     this.scoreboard.draw(
-      this.canvas.context
+      this.canvas.context,
+      this.canvas.viewport.size
     )
   }
 
@@ -304,13 +324,19 @@ function Game(canvas, snake, food, scoreboard) {
     let oldSnakeHead = this.snake.bodyParts[0]
     let unableToMove = false
     let eatenFood = false
+    let win = false
+    
+    let newBody = JSON.parse(JSON.stringify(this.snake.bodyParts)).slice(0, -1)
+    if (this.snake.bodyParts.length === 1) newBody = this.snake.bodyParts
+    
+    newBody.forEach(bodyPart => {
+      if (this.snake.disabled) unableToMove = true
 
-    this.snake.bodyParts.forEach(bodyPart => {
       if (
         oldSnakeHead.x + direction.x === bodyPart.x &&
         oldSnakeHead.y + direction.y === bodyPart.y
       ) unableToMove = true
-
+        
       if (
         oldSnakeHead.x + direction.x === -1 ||
         oldSnakeHead.x + direction.x === this.canvas.checkerboardColumns ||
@@ -318,10 +344,17 @@ function Game(canvas, snake, food, scoreboard) {
         oldSnakeHead.y + direction.y === this.canvas.checkerboardRows
       ) unableToMove = true
 
+      // console.log(oldSnakeHead.x + direction.x === -1)
+
       if (
         oldSnakeHead.x + direction.x === this.food.x &&
         oldSnakeHead.y + direction.y === this.food.y
       ) eatenFood = true
+
+      if (
+        eatenFood &&
+        this.scoreboard.score + 1 === 50
+      ) win = true
     })
 
     if (!unableToMove) this.snake.move(direction, eatenFood)
@@ -333,6 +366,11 @@ function Game(canvas, snake, food, scoreboard) {
         this.snake.bodyParts
       )
       this.scoreboard.score += 1
+    }
+
+    if (win) {
+      this.scoreboard.win = true
+      this.snake.disabled = true
     }
 
     this.draw()
@@ -351,17 +389,12 @@ function startGame() {
   gameScreen.initialize()
   
   const snakeInitialState = [
-    { x: 3, y: 5 },
-    { x: 3, y: 6 },
-    { x: 4, y: 6 },
-    { x: 4, y: 7 },
-    { x: 4, y: 8 },
-    { x: 4, y: 9 }
+    { x: 3, y: 5 }
   ]
 
   const snake = new Snake(snakeInitialState)
 
-  const scoreboard = new Scoreboard(snakeInitialState.length)
+  const scoreboard = new Scoreboard(snakeInitialState.length - 1)
   
   const food = new Food(2, 4)
 
