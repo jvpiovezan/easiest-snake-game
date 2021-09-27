@@ -260,9 +260,8 @@ function Scoreboard(score) {
   this.win = false
 
   this.draw = (context, size) => {
-    const fontSize = 50
     context.textAlign = 'center'
-    context.font = `${fontSize}px monospace`
+    context.font = '50px monospace'
     if (!this.win) {
       context.fillStyle = 'white'
       context.fillTextByViewport(`score: ${this.score}`, size / 2, 48)
@@ -327,7 +326,7 @@ function Game(canvas, snake, food, scoreboard) {
     let win = false
     
     let newBody = JSON.parse(JSON.stringify(this.snake.bodyParts)).slice(0, -1)
-    if (this.snake.bodyParts.length === 1) newBody = this.snake.bodyParts
+    if (this.snake.bodyParts.length <= 2) newBody = this.snake.bodyParts
     
     newBody.forEach(bodyPart => {
       if (this.snake.disabled) unableToMove = true
@@ -353,7 +352,7 @@ function Game(canvas, snake, food, scoreboard) {
 
       if (
         eatenFood &&
-        this.scoreboard.score + 1 === 50
+        this.scoreboard.score + 1 === 10
       ) win = true
     })
 
